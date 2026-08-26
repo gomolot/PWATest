@@ -1,0 +1,10 @@
+{
+  "name": "PWA Test",
+  "short_name": "PWA Test",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1b2a3a",
+  "theme_color": "#1b2a3a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

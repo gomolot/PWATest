@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PWA Test</title>
+<meta name="theme-color" content="#1b2a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PWA Test">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  :root { --bg:#1b2a3a; --panel:#243547; --ink:#f2efe6; --dim:#9db0c2; --ok:#5fd39a; --warn:#ffb84d; --bad:#ff7b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100dvh; background:var(--bg); color:var(--ink); font:17px/1.5 system-ui,-apple-system,sans-serif;
+         padding:max(24px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom)); }
+  h1 { font-size:34px; margin:0 0 4px; letter-spacing:-.02em; }
+  p.sub { color:var(--dim); margin:0 0 28px; }
+  ul { list-style:none; padding:0; margin:0 0 24px; }
+  li { display:flex; justify-content:space-between; gap:12px; background:var(--panel); border-radius:12px; padding:14px 16px; margin-bottom:8px; }
+  li b { font-weight:500; }
+  .status { font-variant-numeric:tabular-nums; }
+  .ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
+  button { width:100%; font:inherit; font-weight:600; padding:16px; border:0; border-radius:12px; background:var(--warn); color:#1b2a3a; }
+  button:disabled { opacity:.35; }
+  button:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+  .counter { text-align:center; margin:32px 0; }
+  .counter output { display:block; font-size:72px; font-weight:700; line-height:1; letter-spacing:-.04em; }
+  .counter span { color:var(--dim); font-size:14px; }
+  .tap { margin-top:12px; background:var(--panel); color:var(--ink); }
+  .hint { color:var(--dim); font-size:14px; margin-top:16px; }
+</style>
+</head>
+<body>
+<h1>PWA test</h1>
+<p class="sub">If everything below is green, it works.</p>
+
+<ul>
+  <li><b>Secure context (HTTPS)</b><span id="https" class="status">…</span></li>
+  <li><b>Service worker</b><span id="sw" class="status">…</span></li>
+  <li><b>Installed as app</b><span id="standalone" class="status">…</span></li>
+  <li><b>Network</b><span id="net" class="status">…</span></li>
+</ul>
+
+<button id="install" disabled>Install app</button>
+<p class="hint" id="hint"></p>
+
+<div class="counter">
+  <output id="count">0</output>
+  <span>taps, saved on this device</span>
+  <button class="tap" id="tap">Tap</button>
+</div>
+
+<script>
+// ---- self-check ----
+const set = (id, text, cls) => { const el = document.getElementById(id); el.textContent = text; el.className = 'status ' + cls; };
+set('https', window.isSecureContext ? 'yes' : 'no', window.isSecureContext ? 'ok' : 'bad');
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+set('standalone', standalone ? 'yes' : 'no, running in browser', standalone ? 'ok' : 'warn');
+const net = () => set('net', navigator.onLine ? 'online' : 'offline (still works!)', navigator.onLine ? 'ok' : 'warn');
+net(); addEventListener('online', net); addEventListener('offline', net);
+
+// ---- service worker ----
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register('sw.js')
+    .then(() => set('sw', 'registered', 'ok'))
+    .catch(err => set('sw', 'failed: ' + err.message, 'bad'));
+} else {
+  set('sw', 'unavailable', 'bad');
+}
+
+// ---- install button (Android/Chrome); iOS needs Share → Add to Home Screen ----
+const btn = document.getElementById('install'), hint = document.getElementById('hint');
+let deferred;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; btn.disabled = false; });
+btn.onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; btn.disabled = true; };
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+if (standalone) hint.textContent = 'Already installed. You can delete the browser tab.';
+else if (isIOS) hint.textContent = 'On iPhone: tap the Share button, then "Add to Home Screen".';
+else hint.textContent = 'On Android the button lights up when Chrome is ready. Or use the browser menu → "Install app".';
+
+// ---- persistence check ----
+const out = document.getElementById('count');
+let n = +localStorage.getItem('taps') || 0; out.textContent = n;
+document.getElementById('tap').onclick = () => { out.textContent = ++n; localStorage.setItem('taps', n); };
+</script>
+</body>
+</html>
